@@ -1,27 +1,55 @@
 # -*- coding:utf-8 -*-
-from flask import Flask, session
+
+# coding:utf-8
+
+from flask import Flask, render_template, redirect, url_for, session
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, EqualTo
+
 
 app = Flask(__name__)
 
-# flask的session 需要用到密钥字符串
-app.config["SECRET_KEY"]="ADGJ;K;LKCX;Z;LKA;SDFLK;K;23K4"   #随便写的字符串
+app.config["SECRET_KEY"] = "xhosd6f982yfhowefy29f"  #需要key，完成csrf校验（要求cookie中的值、请求中的值，用来校验）
 
-# flask 默认把session信息加密后存储到cookie中，正常情况下，会放到后端存储中（数据库、其它...）
 
-@app.route("/login")
-def login():
-    # 设置session数据，类似字典
-    # 生成session后，前端浏览器中的cookie会记录此用户的session_id(或者不放浏览器，放url中,xx/index.html?session_id=1)，flask也会把session_id记录到后端存储中（数据库、其它,由扩展实现）
-    session["name"]="python"
-    session["mobile"]="11122223333"
-    return "login sucess"
+# 定义表单的模型类
+class RegisterForm(FlaskForm):
+    """自定义的注册表单模型类"""
+    #                       名字            验证器/验证器
+    # DataRequired 保证数据必须填写，并且不能为空; 括号内填为空时返回的信息
+    user_name = StringField(label=u"用户名", validators=[DataRequired(u"用户名不能为空")])
+    password = PasswordField(label=u"密码", validators=[DataRequired(u"密码不能为空")])
+    password2 = PasswordField(label=u"确认密码", validators=[DataRequired(u"确认密码不能为空"),
+                                                         EqualTo("password", u"两次密码不一致")])
+    submit = SubmitField(label=u"提交")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    # 创建表单对象, 如果是post请求，前端发送了数据，flask会把数据在构造form对象的时候，存放到对象中
+    form = RegisterForm()
+
+    # 判断form中的数据是否合理
+    # 如果form中的数据完全满足所有的验证器，则返回真，否则返回假
+    if form.validate_on_submit():
+        # 表示验证合格
+        # 提取数据
+        uname = form.user_name.data
+        pwd = form.password.data
+        pwd2 = form.password2.data
+        print(uname, pwd, pwd2)
+        session["user_name"] = uname
+        return redirect(url_for("index"))
+
+    return render_template("register.html", form=form)
+
 
 @app.route("/index")
 def index():
-    # 获取session数据
-    # 获取前端的cookie的session_id，然后由此从后端存储中获取对应用户的session信息（name,mobile等）
-    name = session.get("name")
-    return "hello {0}".format(name)
+    user_name = session.get("user_name", "")    ##默认值为空 ""
+    return "hello %s" % user_name
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     app.run(debug=True)
